@@ -6,11 +6,11 @@ Prototipo funcional desarrollado para la asignatura "Desarrollo de Aplicaciones 
 
 ## Integrantes
 
-| Nombre | Rol en el proyecto                              |
-|---|-------------------------------------------------|
-| Nombre Apellido | Parte 1 – Ítalo Carmona Matus                   |
-| Nombre Apellido | Parte 2 – Pantallas y formularios               |
-| Nombre Apellido| Parte 3 – Animaciones, recursos nativos y cierre|
+| Nombre              | Rol en el proyecto                             |
+|---------------------|------------------------------------------------|
+| Ítalo Carmona Matus |Base, datos y lógica                   |
+|                     |Pantallas y formularios              |
+|              | Animaciones, recursos nativos y cierre|
 
 **Profesor:** José Candia Hernandez
 
