@@ -13,6 +13,8 @@ class ProductoRepository(private val productoDao: ProductoDao) {
 
     fun obtenerStockBajo(): Flow<List<Producto>> = productoDao.obtenerStockBajo()
 
+    fun observarPorId(id: Int): Flow<Producto?> = productoDao.observarPorId(id)
+
     suspend fun obtenerPorId(id: Int): Producto? = productoDao.obtenerPorId(id)
 
     // Indica si el código ya está en uso por otro producto

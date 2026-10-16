@@ -29,6 +29,10 @@ interface ProductoDao {
     )
     fun buscar(texto: String): Flow<List<Producto>>
 
+    // Observa un producto: se actualiza solo cuando cambia en la base de datos
+    @Query("SELECT * FROM productos WHERE id = :id")
+    fun observarPorId(id: Int): Flow<Producto?>
+
     // Productos en stock bajo o agotados
     @Query("SELECT * FROM productos WHERE cantidad <= nivelMinimo ORDER BY cantidad")
     fun obtenerStockBajo(): Flow<List<Producto>>
