@@ -2,21 +2,28 @@ package com.example.cappucare.viewmodel
 
 import com.example.cappucare.model.Perfil
 import com.example.cappucare.model.Usuario
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-// Guarda el usuario que inició sesión (simulado, solo en memoria).
-// TEMPORAL: si el equipo define otra forma de manejar la sesión, se reemplaza este archivo.
+// Guarda el usuario que inició sesión (solo en memoria)
 object Sesion {
-    var usuario: Usuario? = null
-        private set
+
+    private val _usuario = MutableStateFlow<Usuario?>(null)
+    // Permite que la UI reaccione cuando alguien inicia o cierra sesión
+    val usuarioFlow: StateFlow<Usuario?> = _usuario.asStateFlow()
+
+    val usuario: Usuario?
+        get() = _usuario.value
 
     val esEncargado: Boolean
         get() = usuario?.perfil == Perfil.ENCARGADO
 
     fun iniciar(usuario: Usuario) {
-        this.usuario = usuario
+        _usuario.value = usuario
     }
 
     fun cerrar() {
-        usuario = null
+        _usuario.value = null
     }
 }

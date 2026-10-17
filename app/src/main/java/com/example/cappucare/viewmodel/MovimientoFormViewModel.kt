@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.cappucare.viewmodel.validacion.Validadores
 
 class MovimientoFormViewModel(
     application: Application,
@@ -82,21 +83,22 @@ class MovimientoFormViewModel(
     }
 
     // Valida los campos y actualiza los errores
+    // Valida los campos y actualiza los errores; retorna true si todo es correcto
     fun validarFormulario(): Boolean {
         val e = _estado.value
-        val cantidad = e.cantidad.trim().toIntOrNull()
         val producto = e.producto
+        val cantidad = e.cantidad.trim().toIntOrNull()
+        val errorCantidad = Validadores.enteroPositivo(e.cantidad, "la cantidad") // RN4
 
         val errores = MovimientoFormErrores(
             producto = if (producto == null) "Selecciona un producto" else null,
             cantidad = when {
-                e.cantidad.isBlank() -> "La cantidad es obligatoria"
-                cantidad == null -> "Ingresa un número entero"
-                cantidad <= 0 -> "La cantidad debe ser mayor a 0" // RN4
-                e.tipo == TipoMovimiento.SALIDA && producto != null && cantidad > producto.cantidad ->
-                    "Stock insuficiente: disponible ${producto.cantidad}" // RN3
+                errorCantidad != null -> errorCantidad
+                e.tipo == TipoMovimiento.SALIDA && producto != null && cantidad != null &&
+                        cantidad > producto.cantidad -> "Stock insuficiente: disponible ${producto.cantidad}" // RN3
                 else -> null
             },
+            // RN5: toda salida lleva un motivo
             motivo = if (e.tipo == TipoMovimiento.SALIDA && e.motivo == null) "Selecciona el motivo de la salida" else null
         )
 

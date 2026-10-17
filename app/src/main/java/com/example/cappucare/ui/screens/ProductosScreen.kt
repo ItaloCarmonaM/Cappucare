@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -62,7 +63,16 @@ fun ProductosScreen(
     Scaffold(
         // El menú inferior ya lo maneja AppNavigation: aquí no se repiten los márgenes
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = { TopAppBar(title = { Text("Productos") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Productos") },
+                actions = {
+                    IconButton(onClick = { mainViewModel.cerrarSesion() }) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Cerrar sesión")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             // RN9: solo el Encargado crea productos
             if (Sesion.esEncargado) {
@@ -125,7 +135,7 @@ fun ProductosScreen(
 private fun EntradaAnimada(indice: Int, contenido: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(minOf(indice, 8) * 60L) // escalonado, con tope para listas largas
+        delay(if (indice < 8) indice * 60L else 0L) // escalonado solo en las primeras tarjetas
         visible = true
     }
     AnimatedVisibility(

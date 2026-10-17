@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.cappucare.model.LoginUiState
 import com.example.cappucare.CappucareApp
 import com.example.cappucare.repository.UsuarioRepository
 import com.example.cappucare.viewmodel.validacion.Validadores
@@ -14,16 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// Estado de la pantalla de login
-data class LoginUiState(
-    val correo: String = "",
-    val clave: String = "",
-    val errorCorreo: String? = null,
-    val errorClave: String? = null,
-    val errorGeneral: String? = null,
-    val cargando: Boolean = false,
-    val ingresoExitoso: Boolean = false
-)
+
 
 class LoginViewModel(private val repositorio: UsuarioRepository) : ViewModel() {
 

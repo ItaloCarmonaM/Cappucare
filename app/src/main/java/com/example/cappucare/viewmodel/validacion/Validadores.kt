@@ -19,12 +19,17 @@ object Validadores {
     }
 
     fun obligatorio(valor: String, campo: String): String? =
-        if (valor.isBlank()) "$campo es obligatorio" else null
+        if (valor.isBlank()) "Ingresa $campo" else null
 
-    // RN2: la cantidad no puede ser negativa
     fun enteroNoNegativo(valor: String, campo: String): String? {
-        if (valor.isBlank()) return "$campo es obligatorio"
-        val numero = valor.trim().toIntOrNull() ?: return "$campo debe ser un número entero"
-        return if (numero < 0) "$campo no puede ser negativo" else null
+        if (valor.isBlank()) return "Ingresa $campo"
+        val numero = valor.trim().toIntOrNull() ?: return "Ingresa un número entero"
+        return if (numero < 0) "No puede ser menor a 0" else null
+    }
+
+    fun enteroPositivo(valor: String, campo: String): String? {
+        if (valor.isBlank()) return "Ingresa $campo"
+        val numero = valor.trim().toIntOrNull() ?: return "Ingresa un número entero"
+        return if (numero <= 0) "Debe ser mayor a 0" else null
     }
 }

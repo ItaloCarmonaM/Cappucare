@@ -37,4 +37,10 @@ class MainViewModel : ViewModel() {
     fun navigateUp() {
         viewModelScope.launch { _navigationEvents.emit(NavigationEvent.NavigateUp) }
     }
+
+    // Cierra la sesión y vuelve al login, limpiando la pila de navegación
+    fun cerrarSesion() {
+        Sesion.cerrar()
+        navigateTo(Screen.Login, popUpToRoute = Screen.Productos, inclusive = true)
+    }
 }

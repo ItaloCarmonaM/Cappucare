@@ -9,6 +9,7 @@ import com.example.cappucare.model.Producto
 import com.example.cappucare.model.ProductoFormErrores
 import com.example.cappucare.model.ProductoFormUiState
 import com.example.cappucare.navigation.Screen
+import com.example.cappucare.viewmodel.validacion.Validadores
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -90,30 +91,18 @@ class ProductoFormViewModel(
         _estado.update { it.copy(ubicacion = valor, errores = it.errores.copy(ubicacion = null)) }
     }
 
-    // Valida los campos y actualiza los errores; retorna true si todo es correcto
+    // Valida los campos y actualiza los errores
     fun validarFormulario(): Boolean {
         val e = _estado.value
-        val cantidad = e.cantidad.trim().toIntOrNull()
-        val nivelMinimo = e.nivelMinimo.trim().toIntOrNull()
 
         val errores = ProductoFormErrores(
-            codigo = if (e.codigo.isBlank()) "El código es obligatorio" else null,
-            nombre = if (e.nombre.isBlank()) "El nombre es obligatorio" else null,
-            categoria = if (e.categoria.isBlank()) "La categoría es obligatoria" else null,
-            cantidad = when {
-                e.cantidad.isBlank() -> "La cantidad es obligatoria"
-                cantidad == null -> "Ingresa un número entero"
-                cantidad < 0 -> "La cantidad no puede ser negativa" // RN2
-                else -> null
-            },
-            unidadMedida = if (e.unidadMedida.isBlank()) "La unidad de medida es obligatoria" else null,
-            nivelMinimo = when {
-                e.nivelMinimo.isBlank() -> "El nivel mínimo es obligatorio"
-                nivelMinimo == null -> "Ingresa un número entero"
-                nivelMinimo < 0 -> "El nivel mínimo no puede ser negativo"
-                else -> null
-            },
-            ubicacion = if (e.ubicacion.isBlank()) "La ubicación es obligatoria" else null
+            codigo = Validadores.obligatorio(e.codigo, "el código"),
+            nombre = Validadores.obligatorio(e.nombre, "el nombre"),
+            categoria = Validadores.obligatorio(e.categoria, "la categoría"),
+            cantidad = Validadores.enteroNoNegativo(e.cantidad, "la cantidad"), // RN2
+            unidadMedida = Validadores.obligatorio(e.unidadMedida, "la unidad de medida"),
+            nivelMinimo = Validadores.enteroNoNegativo(e.nivelMinimo, "el nivel mínimo"),
+            ubicacion = Validadores.obligatorio(e.ubicacion, "la ubicación")
         )
 
         _estado.update { it.copy(errores = errores) }

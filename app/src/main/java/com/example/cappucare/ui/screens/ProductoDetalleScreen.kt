@@ -20,8 +20,10 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -122,6 +124,15 @@ fun ProductoDetalleScreen(
                             FilaDato(Icons.Default.Place, "Ubicación", p.ubicacion)
                         }
                     }
+                    Button(
+                        onClick = { mainViewModel.navigateTo(Screen.MovimientoForm(p.id)) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.SwapVert, contentDescription = null)
+                        // El Consultor solo registra ventas (RN9)
+                        Text(if (Sesion.esEncargado) "  Registrar movimiento" else "  Registrar venta")
+                    }
+
                 }
             }
         }

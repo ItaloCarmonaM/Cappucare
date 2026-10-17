@@ -14,6 +14,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.cappucare.model.Perfil
 import com.example.cappucare.ui.components.BarraNavegacion
 import com.example.cappucare.viewmodel.MainViewModel
+import androidx.compose.runtime.collectAsState
+import com.example.cappucare.viewmodel.Sesion
 
 // Pantallas donde se muestra el menú inferior
 private val rutasConBarra = listOf(
@@ -27,6 +29,7 @@ fun AppNavigation(viewModel: MainViewModel = viewModel()) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
+    val usuario by Sesion.usuarioFlow.collectAsState()
 
     // Escucha los eventos de navegación emitidos por el ViewModel
     LaunchedEffect(Unit) {
@@ -53,7 +56,7 @@ fun AppNavigation(viewModel: MainViewModel = viewModel()) {
             if (rutaActual in rutasConBarra) {
                 BarraNavegacion(
                     rutaActual = rutaActual,
-                    perfil = Perfil.ENCARGADO, // Temporal: se reemplaza por la sesión en el punto 10
+                    perfil = usuario?.perfil ?: Perfil.CONSULTOR, // Sin sesión se usa el perfil de menos permisos
                     onItemClick = { destino ->
                         viewModel.navigateTo(destino, popUpToRoute = Screen.Productos, singleTop = true)
                     }
