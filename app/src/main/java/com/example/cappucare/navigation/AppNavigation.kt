@@ -50,7 +50,7 @@ fun AppNavigation(viewModel: MainViewModel = viewModel()) {
     }
 
     Scaffold(
-        // Cada pantalla maneja sus propios márgenes del sistema (barra superior)
+        // Cada pantalla maneja sus propios márgenes del sistema
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (rutaActual in rutasConBarra) {

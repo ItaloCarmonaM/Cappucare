@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-// Registro de un ingreso o salida de productos (historial)
+// Registro de un ingreso o salida de productos
 @Entity(
     tableName = "movimientos",
     foreignKeys = [
@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey
             entity = Producto::class,
             parentColumns = ["id"],
             childColumns = ["productoId"],
-            onDelete = ForeignKey.RESTRICT // El historial no queda sin su producto
+            onDelete = ForeignKey.RESTRICT
         ),
         ForeignKey(
             entity = Usuario::class,

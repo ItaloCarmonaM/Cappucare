@@ -2,8 +2,8 @@ package com.example.cappucare.model
 
 // Estado del formulario de movimiento
 data class MovimientoFormUiState(
-    val productos: List<Producto> = emptyList(), // Para elegir el producto
-    val producto: Producto? = null,              // Producto seleccionado
+    val productos: List<Producto> = emptyList(),
+    val producto: Producto? = null,
     val tipo: TipoMovimiento = TipoMovimiento.INGRESO,
     val cantidad: String = "",
     val motivo: MotivoSalida? = null,
