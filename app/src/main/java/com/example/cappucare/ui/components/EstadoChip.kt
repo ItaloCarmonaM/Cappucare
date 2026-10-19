@@ -1,5 +1,7 @@
 package com.example.cappucare.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,11 +28,17 @@ import com.example.cappucare.ui.theme.ColorStockBajo
 // Etiqueta con el estado de stock (RN7): Disponible, Stock bajo o Agotado
 @Composable
 fun EstadoChip(estado: EstadoProducto, modifier: Modifier = Modifier) {
-    val (texto, color) = when (estado) {
+    val (texto, colorFinal) = when (estado) {
         EstadoProducto.DISPONIBLE -> "Disponible" to ColorDisponible
         EstadoProducto.STOCK_BAJO -> "Stock bajo" to ColorStockBajo
         EstadoProducto.AGOTADO -> "Agotado" to ColorAgotado
     }
+    // El color cambia suavemente cuando cambia el estado del stock
+    val color by animateColorAsState(
+        targetValue = colorFinal,
+        animationSpec = tween(durationMillis = 600),
+        label = "colorEstado"
+    )
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(50),
