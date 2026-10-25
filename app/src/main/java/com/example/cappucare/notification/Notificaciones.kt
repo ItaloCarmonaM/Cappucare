@@ -20,7 +20,6 @@ object Notificaciones {
 
     private const val CANAL_ID = "stock_bajo"
 
-    // Crea el canal de notificaciones
     fun crearCanal(context: Context) {
         val canal = NotificationChannel(
             CANAL_ID,
@@ -28,11 +27,10 @@ object Notificaciones {
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Avisa cuando un producto llega al mínimo"
-            enableVibration(true)
+            enableVibration(false) // La vibración la controla la clase Vibracion
         }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(canal)
     }
-
 
     private fun tienePermiso(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -40,10 +38,9 @@ object Notificaciones {
                     context, android.Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED
 
-    // Muestra el aviso de un producto.
     @SuppressLint("MissingPermission")
-    fun notificarStockBajo(context: Context, producto: Producto) {
-        if (!tienePermiso(context)) return
+    fun notificarStockBajo(context: Context, producto: Producto): Boolean {
+        if (!tienePermiso(context)) return false
 
         val texto = if (producto.estado == EstadoProducto.AGOTADO) {
             "${producto.nombre} está agotado"
@@ -70,5 +67,6 @@ object Notificaciones {
 
         // Se usa el id del producto para no repetir la misma notificación
         NotificationManagerCompat.from(context).notify(producto.id, notificacion)
+        return true
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +27,10 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -79,6 +83,8 @@ fun MovimientoFormScreen(
     val contexto = LocalContext.current
     val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
     var confirmado by remember { mutableStateOf(false) }
+    // Aviso dentro de la app cuando un producto llega al nivel mínimo (null = sin aviso)
+    var alerta by remember { mutableStateOf<String?>(null) }
 
     // El Consultor solo puede registrar ventas (RN9)
     LaunchedEffect(Unit) {
@@ -86,9 +92,10 @@ fun MovimientoFormScreen(
     }
 
     // Tras guardar se muestra la confirmación un momento y se vuelve atrás
+    // Si hay alerta se deja más tiempo para poder leerla
     LaunchedEffect(confirmado) {
         if (confirmado) {
-            delay(1200)
+            delay(if (alerta != null) 3000 else 1200)
             mainViewModel.navigateBack()
         }
     }
@@ -192,8 +199,15 @@ fun MovimientoFormScreen(
                             vm.registrar(usuario.id) { resultado ->
                                 // RN8: solo avisa cuando recién llega al nivel mínimo
                                 if (resultado.alcanzoNivelMinimo) {
-                                    Notificaciones.notificarStockBajo(contexto, resultado.producto)
+                                    val notificada = Notificaciones.notificarStockBajo(contexto, resultado.producto)
                                     Vibracion.vibrar(contexto)
+                                    val nombre = resultado.producto.nombre
+                                    alerta = if (notificada) {
+                                        "$nombre llegó a su nivel mínimo"
+                                    } else {
+                                        // Sin permiso la notificación no se muestra: se avisa dentro de la app
+                                        "$nombre llegó a su nivel mínimo. Activa las notificaciones en Ajustes para recibir avisos"
+                                    }
                                 }
                                 confirmado = true
                             }
@@ -227,8 +241,27 @@ fun MovimientoFormScreen(
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )
-                        Spacer(Modifier.padding(4.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Movimiento registrado", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+
+                // Aviso de stock bajo dentro de la interfaz (acompaña a la notificación y la vibración)
+                AnimatedVisibility(
+                    visible = alerta != null,
+                    enter = fadeIn() + expandVertically()
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(alerta ?: "")
+                        }
                     }
                 }
             }
