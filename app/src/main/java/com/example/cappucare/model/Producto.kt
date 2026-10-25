@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-// Producto o insumo médico comercializado por Cappucare
+// Producto o insumo médico
 @Entity(
     tableName = "productos",
     indices = [Index(value = ["codigo"], unique = true)] // RN1: código único

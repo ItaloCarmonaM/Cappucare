@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-// Usuario simulado para el login (datos ficticios)
+// Usuario simulado para el login
 @Entity(
     tableName = "usuarios",
     indices = [Index(value = ["correo"], unique = true)]

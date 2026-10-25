@@ -13,5 +13,5 @@ enum class MotivoSalida {
     CORRECCION_STOCK      // Corrección por diferencia entre lo registrado y lo real
 }
 
-// Estado del producto según sus existencias (se calcula, no se guarda)
+// Estado del producto según sus existencias
 enum class EstadoProducto { DISPONIBLE, STOCK_BAJO, AGOTADO }

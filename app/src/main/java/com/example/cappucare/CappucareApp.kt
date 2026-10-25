@@ -3,6 +3,7 @@ package com.example.cappucare
 import android.app.Application
 import com.example.cappucare.data.AppDB
 import com.example.cappucare.data.DatosIniciales
+import com.example.cappucare.notification.Notificaciones
 import com.example.cappucare.repository.MovimientoRepository
 import com.example.cappucare.repository.ProductoRepository
 import com.example.cappucare.repository.UsuarioRepository
@@ -23,6 +24,8 @@ class CappucareApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // El canal de notificaciones se crea una sola vez al abrir la app
+        Notificaciones.crearCanal(this)
         // Carga los datos de prueba en segundo plano (solo la primera vez)
         scope.launch { DatosIniciales.cargar(database) }
     }
