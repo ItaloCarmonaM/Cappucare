@@ -1,26 +1,21 @@
 package com.example.cappucare.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,13 +25,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cappucare.model.MovimientoDetalle
 import com.example.cappucare.model.TipoMovimiento
 import com.example.cappucare.ui.theme.ColorAgotado
 import com.example.cappucare.ui.theme.ColorDisponible
-import com.example.cappucare.ui.utils.columnasProductos
+import com.example.cappucare.ui.utils.anchoMaximoContenido
 import com.example.cappucare.ui.utils.etiqueta
 import com.example.cappucare.ui.utils.rememberTamanoVentana
 import com.example.cappucare.viewmodel.HistorialViewModel
@@ -53,10 +47,9 @@ fun HistorialScreen(
     vm: HistorialViewModel = viewModel()
 ) {
     val movimientos by vm.movimientos.collectAsState()
-    val columnas = rememberTamanoVentana().columnasProductos
+    val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
 
     Scaffold(
-        // El menú inferior ya lo maneja AppNavigation: aquí no se repiten los márgenes
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Historial de movimientos") }) }
     ) { padding ->
@@ -68,15 +61,15 @@ fun HistorialScreen(
                 Text("Aún no hay movimientos registrados")
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columnas),
-                modifier = Modifier.padding(padding),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(16.dp)
+            Box(
+                Modifier.padding(padding).fillMaxSize(),
+                contentAlignment = Alignment.TopCenter
             ) {
-                items(movimientos, key = { it.movimiento.id }) { detalle ->
-                    TarjetaMovimiento(detalle)
+                LazyColumn(modifier = Modifier.widthIn(max = anchoMaximo).fillMaxWidth()) {
+                    items(movimientos, key = { it.movimiento.id }) { detalle ->
+                        FilaMovimiento(detalle)
+                        HorizontalDivider()
+                    }
                 }
             }
         }
@@ -84,34 +77,32 @@ fun HistorialScreen(
 }
 
 @Composable
-private fun TarjetaMovimiento(detalle: MovimientoDetalle) {
+private fun FilaMovimiento(detalle: MovimientoDetalle) {
     val m = detalle.movimiento
     val esIngreso = m.tipo == TipoMovimiento.INGRESO
     val color = if (esIngreso) ColorDisponible else ColorAgotado
+    val signo = if (esIngreso) "+" else "-"
     val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "CL")).format(Date(m.fecha))
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    ListItem(
+        leadingContent = {
             Icon(
                 imageVector = if (esIngreso) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
                 contentDescription = m.tipo.etiqueta(),
                 tint = color
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(detalle.productoNombre, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "${m.tipo.etiqueta()} de ${m.cantidad}" +
-                            (m.motivo?.let { " · ${it.etiqueta()}" } ?: ""),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = color
-                )
-                Text("Responsable: ${detalle.usuarioNombre}", style = MaterialTheme.typography.bodySmall)
-                Text(fecha, style = MaterialTheme.typography.bodySmall)
+        },
+        headlineContent = {
+            Text(detalle.productoNombre, style = MaterialTheme.typography.titleMedium)
+        },
+        supportingContent = {
+            Column {
+                Text(m.tipo.etiqueta() + (m.motivo?.let { " · ${it.etiqueta()}" } ?: ""))
+                Text("${detalle.usuarioNombre} · $fecha", style = MaterialTheme.typography.bodySmall)
             }
+        },
+        trailingContent = {
+            Text("$signo${m.cantidad}", style = MaterialTheme.typography.titleMedium, color = color)
         }
-    }
+    )
 }
