@@ -1,18 +1,9 @@
 package com.example.cappucare.model
 
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
-
-// Usuario simulado para el login
-@Entity(
-    tableName = "usuarios",
-    indices = [Index(value = ["correo"], unique = true)]
-)
+// Usuario que devuelve el microservicio de usuarios
 data class Usuario(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val id: Int = 0,
     val nombre: String,
     val correo: String,
-    val clave: String,
     val perfil: Perfil
 )

@@ -1,16 +1,8 @@
 package com.example.cappucare.model
 
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
-
-// Producto o insumo médico
-@Entity(
-    tableName = "productos",
-    indices = [Index(value = ["codigo"], unique = true)] // RN1: código único
-)
+// Producto o insumo médico (datos que entrega el microservicio de inventario)
 data class Producto(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val id: Int = 0,
     val codigo: String,
     val nombre: String,
     val descripcion: String,

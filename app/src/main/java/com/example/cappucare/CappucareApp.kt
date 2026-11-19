@@ -1,32 +1,22 @@
 package com.example.cappucare
 
 import android.app.Application
-import com.example.cappucare.data.AppDB
-import com.example.cappucare.data.DatosIniciales
+import com.example.cappucare.data.remote.RetrofitInstance
 import com.example.cappucare.notification.Notificaciones
 import com.example.cappucare.repository.MovimientoRepository
 import com.example.cappucare.repository.ProductoRepository
 import com.example.cappucare.repository.UsuarioRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
-// Clase que se crea al iniciar la app: guarda la base de datos y los repositorios
+// Clase que se crea al iniciar la app: guarda los repositorios que se conectan a los microservicios
 class CappucareApp : Application() {
 
-    val database by lazy { AppDB.obtenerInstancia(this) }
-    val usuarioRepository by lazy { UsuarioRepository(database.usuarioDao()) }
-    val productoRepository by lazy { ProductoRepository(database.productoDao()) }
-    val movimientoRepository by lazy { MovimientoRepository(database) }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val usuarioRepository by lazy { UsuarioRepository(RetrofitInstance.usuariosApi) }
+    val productoRepository by lazy { ProductoRepository(RetrofitInstance.inventarioApi) }
+    val movimientoRepository by lazy { MovimientoRepository(RetrofitInstance.inventarioApi) }
 
     override fun onCreate() {
         super.onCreate()
         // El canal de notificaciones se crea una sola vez al abrir la app
         Notificaciones.crearCanal(this)
-        // Carga los datos de prueba en segundo plano (solo la primera vez)
-        scope.launch { DatosIniciales.cargar(database) }
     }
 }

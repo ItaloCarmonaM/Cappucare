@@ -1,30 +1,28 @@
 package com.example.cappucare.repository
 
-import com.example.cappucare.data.ProductoDao
+import com.example.cappucare.data.remote.InventarioApiService
+import com.example.cappucare.data.remote.llamarApi
 import com.example.cappucare.model.Producto
-import kotlinx.coroutines.flow.Flow
 
-// Acceso a los datos de los productos
-class ProductoRepository(private val productoDao: ProductoDao) {
+// Acceso a los productos del microservicio de inventario
+class ProductoRepository(private val api: InventarioApiService) {
 
-    fun obtenerTodos(): Flow<List<Producto>> = productoDao.obtenerTodos()
+    suspend fun obtenerTodos(): Result<List<Producto>> =
+        llamarApi { api.obtenerProductos() }
 
-    fun buscar(texto: String): Flow<List<Producto>> = productoDao.buscar(texto.trim())
+    suspend fun buscar(texto: String): Result<List<Producto>> =
+        llamarApi { api.obtenerProductos(texto.trim()) }
 
-    fun obtenerStockBajo(): Flow<List<Producto>> = productoDao.obtenerStockBajo()
+    suspend fun obtenerStockBajo(): Result<List<Producto>> =
+        llamarApi { api.obtenerStockBajo() }
 
-    fun observarPorId(id: Int): Flow<Producto?> = productoDao.observarPorId(id)
+    suspend fun obtenerPorId(id: Int): Result<Producto> =
+        llamarApi { api.obtenerProducto(id) }
 
-    suspend fun obtenerPorId(id: Int): Producto? = productoDao.obtenerPorId(id)
+    // Error 409 si el código ya está en uso (RN1)
+    suspend fun crear(producto: Producto): Result<Producto> =
+        llamarApi { api.crearProducto(producto) }
 
-    // Indica si el código ya está en uso por otro producto
-    // Al editar, se pasa el id actual para que no se compare consigo mismo
-    suspend fun existeCodigo(codigo: String, idActual: Int = 0): Boolean {
-        val encontrado = productoDao.obtenerPorCodigo(codigo.trim())
-        return encontrado != null && encontrado.id != idActual
-    }
-
-    suspend fun crear(producto: Producto): Long = productoDao.insertar(producto)
-
-    suspend fun actualizar(producto: Producto) = productoDao.actualizar(producto)
+    suspend fun actualizar(producto: Producto): Result<Producto> =
+        llamarApi { api.actualizarProducto(producto.id, producto) }
 }
