@@ -11,7 +11,10 @@ data class ProductoFormUiState(
     val nivelMinimo: String = "",
     val ubicacion: String = "",
     val esEdicion: Boolean = false,
+    val cargando: Boolean = false,
+    val errorCarga: String? = null,
     val guardando: Boolean = false,
+    val errorGeneral: String? = null,
     val errores: ProductoFormErrores = ProductoFormErrores()
 )
 
