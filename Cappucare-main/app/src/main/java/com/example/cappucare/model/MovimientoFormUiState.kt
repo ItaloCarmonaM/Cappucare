@@ -1,0 +1,24 @@
+
+package com.example.cappucare.model
+
+data class MovimientoFormUiState(
+    val productos: List<Producto> = emptyList(),
+    val producto: Producto? = null,
+    val tipo: TipoMovimiento = TipoMovimiento.INGRESO,
+    val cantidad: String = "",
+    val motivo: MotivoSalida? = null,
+    val soloVenta: Boolean = false,
+    val cargando: Boolean = false,
+    val guardando: Boolean = false,
+    val errorGeneral: String? = null,
+    val errores: MovimientoFormErrores = MovimientoFormErrores()
+)
+
+data class MovimientoFormErrores(
+    val producto: String? = null,
+    val cantidad: String? = null,
+    val motivo: String? = null
+) {
+    fun hayErrores(): Boolean =
+        listOf(producto, cantidad, motivo).any { it != null }
+}
