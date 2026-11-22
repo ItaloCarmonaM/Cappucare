@@ -19,8 +19,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Llave con la que se firma el APK de release (la ruta es relativa a la carpeta app/)
+    signingConfigs {
+        create("release") {
+            storeFile = file("../cappucare.jks")
+            storePassword = "cappu123"
+            keyAlias = "cappucare"
+            keyPassword = "cappu123"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
