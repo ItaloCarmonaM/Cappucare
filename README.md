@@ -1,9 +1,10 @@
 # CappuCare
 
 Aplicación móvil Android para el control de existencias de productos e insumos médicos de **Cappucare**.
-Prototipo funcional académico desarrollado para la asignatura **DSY1105 – Desarrollo de Aplicaciones Móviles**.
-La app se conecta a dos microservicios propios desarrollados en **Spring Boot** y consume una API externa
-(**Wikipedia**) para mostrar información de referencia de cada producto.
+La app se conecta a dos microservicios propios desarrollados en Spring Boot y consume una API externa
+(Wikipedia) para mostrar información de referencia de cada producto.
+
+Repositorio de los microservicios: https://github.com/ItaloCarmonaM/backend-cappucare
 
 ## Integrantes
 
@@ -17,7 +18,7 @@ La app se conecta a dos microservicios propios desarrollados en **Spring Boot** 
 
 Cappucare vende productos e insumos médicos y necesita mantener un control preciso de sus existencias.
 Las diferencias entre las cantidades registradas y las reales, y las omisiones en los movimientos de entrada o venta,
-dificultan detectar productos próximos a agotarse. CappuStock permite registrar productos, ingresos y salidas,
+dificultan detectar productos próximos a agotarse. Esta aplicación permite registrar productos, ingresos y salidas,
 consultar el historial y recibir avisos cuando un producto llega a su nivel mínimo.
 
 Todo el trabajo usa **datos ficticios**. No se utilizan bases de datos, credenciales ni datos personales reales.
@@ -28,8 +29,8 @@ Todo el trabajo usa **datos ficticios**. No se utilizan bases de datos, credenci
 alertas de stock bajo (notificación, vibración y aviso en pantalla), microservicios con base de datos
 y consulta de información de referencia en Wikipedia.
 
-
-**No incluye:** Integración con sistemas de ventas, compras o facturación.
+**No incluye:** Integración con sistemas de ventas, compras o facturación. La gestión de usuarios (crear, editar y
+eliminar) está disponible en el microservicio `ms-usuarios`, pero la app solo utiliza su inicio de sesión.
 
 ## Perfiles de usuario
 
@@ -45,8 +46,8 @@ y consulta de información de referencia en Wikipedia.
 | María González | encargado@cappucare.cl | cappu123 | Encargado |
 | Pedro Soto | consultor@cappucare.cl | cappu123 | Consultor |
 
-La primera vez que se abre la app se cargan datos ficticios: 8 productos (disponibles, en stock bajo y agotados)
-y algunos movimientos de ejemplo.
+La primera vez que se inician los microservicios se cargan datos ficticios: 8 productos (disponibles, en stock bajo
+y agotados) y algunos movimientos de ejemplo.
 
 ## Funcionalidades
 
@@ -67,12 +68,12 @@ y algunos movimientos de ejemplo.
 |---|---|---|---|
 | **Notificaciones** | Aviso cuando un producto llega al nivel mínimo | `POST_NOTIFICATIONS` (se pide en tiempo de ejecución desde Android 13) | Canal de notificación creado al iniciar la app, verificación del permiso antes de notificar, `PendingIntent` inmutable, un aviso por producto |
 | **Vibración** | Retroalimentación háptica al generarse la alerta | `VIBRATE` (permiso normal, sin solicitud al usuario) | Comprueba que el dispositivo tenga vibrador y usa `VibratorManager` en Android 12 o superior |
-| **Internet** | Comunicación con los microservicios y con Wikipedia | `INTERNET` (permiso normal) | Tráfico HTTP sin cifrar permitido solo hacia `10.0.2.2` (emulador) mediante `network_security_config` |
+| **Internet** | Comunicación con los microservicios y con Wikipedia | `INTERNET` (permiso normal) | Tráfico HTTP sin cifrar permitido solo hacia las direcciones locales declaradas en `network_security_config` (`10.0.2.2` para el emulador y, si se usa un celular, la IP del computador) |
 
 ## Reglas de negocio
 
 Las reglas RN1 a RN6 y RN8 se validan en el microservicio de inventario. La app también valida los formularios
-para avisar al usuario antes de enviar los datos.
+para avisar al usuario antes de enviar los datos. Las reglas RN7 y RN9 se aplican en la app.
 
 | N° | Regla |
 |---|---|
@@ -96,9 +97,9 @@ App Android (Kotlin + Compose)
               ┌──────────────────────────┼──────────────────────────┐
               ▼                          ▼                          ▼
        ms-usuarios (8081)        ms-inventario (8082)        API Wikipedia
-       Spring Boot + MySQL       Spring Boot + MySQL         (API externa)
+       Spring Boot + H2          Spring Boot + H2            (API externa)
 ```
-El proyecto usa el patrón **MVVM**, que separa la interfaz de la lógica y de los datos:
+El patrón **MVVM** separa la interfaz de la lógica y de los datos:
 
 | Capa (app) | Responsabilidad | Ejemplos |
 |---|---|---|
@@ -115,17 +116,14 @@ estado (cargando, éxito o error) que la pantalla observa.
 
 **App móvil**
 - Kotlin, Jetpack Compose y Material 3
-- MVVM con `StateFlow` y corrutinas
 - Retrofit y Gson (consumo de microservicios y API externa)
-- Navigation Compose (rutas tipadas con `sealed class` y eventos de navegación)
-- Window Size Classes (diseño adaptable)
 - Notificaciones y vibración de Android
 - Pruebas: Kotest, JUnit 5 y MockK
 - Android Studio Rabbit 1 | 2026.2.1 (AGP 9.4) · minSdk 28 (Android 9)
 
 **Microservicios**
-- Java y Spring Boot (Spring Web, Spring Data JPA, Validation)
-- MySQL
+- Java y Spring Boot
+- H2 en modo archivo
 
 ### Microservicio de usuarios (`ms-usuarios`, puerto 8081)
 
@@ -155,7 +153,7 @@ URL base desde el emulador: `http://10.0.2.2:8082/`
 | GET | `/api/productos/{id}` | — | Producto |
 | POST | `/api/productos` | Producto (sin `id`) | Producto |
 | PUT | `/api/productos/{id}` | Producto | Producto |
-| DELETE | `/api/productos/{id}` | — | 204 |
+| DELETE | `/api/productos/{id}` | — | 204 (409 si tiene movimientos) |
 | GET | `/api/movimientos` | — | Lista de movimientos, del más reciente al más antiguo |
 | POST | `/api/movimientos` | Movimiento | Producto actualizado y aviso de nivel mínimo |
 
@@ -187,6 +185,8 @@ URL base desde el emulador: `http://10.0.2.2:8082/`
 **Valores permitidos:** `perfil` = `ENCARGADO` | `CONSULTOR` · `tipo` = `INGRESO` | `SALIDA` ·
 `motivo` = `VENTA` | `PRODUCTO_VENCIDO` | `PRODUCTO_DANADO` | `CORRECCION_STOCK`.
 
+Los errores de ambos microservicios responden `{ "mensaje": "..." }`; la app muestra ese mensaje al usuario.
+
 ### API externa: Wikipedia
 
 Se usa en el detalle del producto para mostrar una ficha de referencia (tarjeta "Información de referencia").
@@ -214,8 +214,10 @@ app/src/main/java/com/example/cappucare/
     ├── screens/      Pantallas de la aplicación
     ├── theme/        Colores, tipografía y tema
     └── utils/        Window Size Classes y textos de enums
- 
+
+app/src/main/res/xml/network_security_config.xml   Direcciones permitidas para tráfico HTTP
 app/src/test/java/    Pruebas unitarias (Kotest, JUnit 5 y MockK)
+docs/                 Capturas para este README (pruebas, APK y llave)
 ```
 
 ## Cómo ejecutar
@@ -224,46 +226,49 @@ app/src/test/java/    Pruebas unitarias (Kotest, JUnit 5 y MockK)
 
 - Android Studio **Rabbit 1 | 2026.2.1** o superior
 - JDK 17 o superior
-- MySQL en ejecución
 - Emulador con imagen **API 28** o superior (o un dispositivo Android)
+- Los microservicios del repositorio [backend-cappucare](https://github.com/ItaloCarmonaM/backend-cappucare)
+  (no requieren instalar ninguna base de datos: usan H2 en archivo)
+
 ### Pasos
 
-1. Clonar el repositorio:
+1. Clonar los dos repositorios:
 ```bash
 git clone https://github.com/ItaloCarmonaM/Cappucare.git
+git clone https://github.com/ItaloCarmonaM/backend-cappucare.git
 ```
-2. Crear las bases de datos en MySQL:
-```sql
-CREATE DATABASE cappustock_usuarios; POR CONFIRMAR
-CREATE DATABASE cappustock_inventario; POR CONFIRMAR
-```
-3. Revisar el usuario y la clave de MySQL en `src/main/resources/application.properties` de cada microservicio.
-4. Iniciar `ms-usuarios` (puerto 8081) y luego `ms-inventario` (puerto 8082). La primera vez cargan los datos de prueba.
-5. Abrir la carpeta de la app en Android Studio y esperar el **Sync** de Gradle.
-6. Crear un emulador en **Device Manager** con imagen **API 28** o superior.
-7. Ejecutar con el botón **Run** e ingresar con uno de los usuarios de prueba.
-> El emulador accede al computador mediante `10.0.2.2`. Si se usa un dispositivo físico, hay que cambiar esa IP por la del
-> computador en `RetrofitInstance` y en `network_security_config.xml`.
+2. Iniciar `ms-usuarios` (puerto 8081) y luego `ms-inventario` (puerto 8082) siguiendo el README del backend
+   (`./mvnw spring-boot:run` en cada carpeta). La primera vez crean las tablas y cargan los datos de prueba.
+3. Abrir la carpeta de la app en Android Studio y esperar el **Sync** de Gradle.
+4. Crear un emulador en **Device Manager** con imagen **API 28** o superior.
+5. Ejecutar con el botón **Run** e ingresar con uno de los usuarios de prueba.
 
-### Probar las alertas de stock
+> El emulador accede al computador mediante `10.0.2.2`, que es la dirección que usa la app por defecto.
 
-1. Ingresar como Encargado y abrir el detalle de **Termómetro digital** (stock 12, nivel mínimo 10).
-2. Pulsar **Registrar movimiento**, elegir **Salida**, cantidad 2 y motivo **Venta**.
-3. Al guardar se muestra la confirmación, un aviso en pantalla, la notificación y la vibración.
-## Pruebas unitarias
+### Cobertura
 
-Las pruebas cubren la lógica de validaciones, repositorios y ViewModels, usando **Kotest**, **JUnit 5** y **MockK**
-con `kotlinx-coroutines-test`.
+<img width="1890" height="836" alt="image" src="https://github.com/user-attachments/assets/358c36be-9d26-4978-be9d-5c8a72f3e629" />
 
-Para ejecutarlas: clic derecho en la carpeta `app/src/test/java` > **Run 'Tests in ...'**, o desde la terminal:
 
-```bash
-./gradlew test
-```
+## APK firmado
+
+El APK de release está firmado con una llave propia (`.jks`) configurada en `app/build.gradle.kts`.
+
+| Elemento | Ubicación |
+|---|---|
+| APK firmado | `app/release/app-release.apk` |
+| Llave (keystore) | `cappucare.jks` (raíz del proyecto) |
+| Alias de la llave | `cappucare` |
+| Configuración de firma | `signingConfigs` en `app/build.gradle.kts` |
+
+### Captura del APK firmado y de la llave
+Llave .jks
+<img width="1081" height="195" alt="image" src="https://github.com/user-attachments/assets/6dfbaca2-1c00-4668-a355-bb5a4563d2ca" />
 
 ## Organización del trabajo
 - **Planificación:** tablero de Trello —https://trello.com/invite/b/6aa7f36e46dce9a5270d1bae/ATTIbdfcfc8cbb455a7b32befe8ddcb8a426B0654338/desarrollo-aplicaciones-moviles
 - **Commits:** mensajes técnicos que describen el cambio realizado.
+- **Repositorios:** `Cappucare` (app) y `backend-cappucare` (microservicios).
 
 ## Posibles mejoras para el futuro
 
