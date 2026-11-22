@@ -52,20 +52,37 @@ import com.example.cappucare.ui.utils.rememberTamanoVentana
 import com.example.cappucare.viewmodel.MainViewModel
 import com.example.cappucare.viewmodel.ProductoDetalleViewModel
 import com.example.cappucare.viewmodel.Sesion
+import com.example.cappucare.ui.components.TarjetaWikipedia
+import com.example.cappucare.viewmodel.WikipediaViewModel
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductoDetalleScreen(
     mainViewModel: MainViewModel,
-    vm: ProductoDetalleViewModel = viewModel(factory = ProductoDetalleViewModel.Factory)
+    vm: ProductoDetalleViewModel = viewModel(factory = ProductoDetalleViewModel.Factory),
+    wikipediaVm: WikipediaViewModel = viewModel(factory = WikipediaViewModel.Factory)
 ) {
     val estado by vm.estado.collectAsState()
+    var mostrarConfirmacion by remember { mutableStateOf(false) }
+    val estadoWikipedia by wikipediaVm.estado.collectAsState()
     val producto = estado.producto
     val error = estado.error
     val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
 
     // Cada vez que la pantalla aparece se consulta de nuevo (el producto pudo editarse o cambiar su stock)
     LaunchedEffect(Unit) { vm.cargar() }
+
+    // Consulta Wikipedia cuando ya se conoce el nombre del producto (independiente de los microservicios)
+    val nombreProducto = producto?.nombre
+    LaunchedEffect(nombreProducto) {
+        nombreProducto?.let { wikipediaVm.cargar(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -77,11 +94,17 @@ fun ProductoDetalleScreen(
                     }
                 },
                 actions = {
-                    // RN9: solo el Encargado edita productos
+                    // RN9: solo el Encargado edita y elimina productos
                     val p = producto
                     if (p != null && Sesion.esEncargado) {
                         IconButton(onClick = { mainViewModel.navigateTo(Screen.ProductoForm(p.id)) }) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar producto")
+                        }
+                        IconButton(
+                            onClick = { mostrarConfirmacion = true },
+                            enabled = !estado.eliminando
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar producto")
                         }
                     }
                 }
@@ -135,6 +158,11 @@ fun ProductoDetalleScreen(
                             FilaDato(Icons.Default.Place, "Ubicación", p.ubicacion)
                         }
                     }
+
+                    TarjetaWikipedia(
+                        estado = estadoWikipedia,
+                        onReintentar = wikipediaVm::reintentar
+                    )
                     Button(
                         onClick = { mainViewModel.navigateTo(Screen.MovimientoForm(p.id)) },
                         modifier = Modifier.fillMaxWidth()
@@ -145,6 +173,33 @@ fun ProductoDetalleScreen(
                 }
             }
         }
+    }
+    // Confirmación antes de eliminar
+    if (mostrarConfirmacion && producto != null) {
+        AlertDialog(
+            onDismissRequest = { mostrarConfirmacion = false },
+            title = { Text("Eliminar producto") },
+            text = { Text("¿Seguro que quieres eliminar \"${producto.nombre}\"? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    mostrarConfirmacion = false
+                    vm.eliminar { mainViewModel.navigateBack() }
+                }) { Text("Eliminar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarConfirmacion = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // El servidor rechazó la eliminación (por ejemplo, el producto tiene movimientos)
+    estado.errorEliminar?.let { mensaje ->
+        AlertDialog(
+            onDismissRequest = vm::descartarErrorEliminar,
+            title = { Text("No se pudo eliminar") },
+            text = { Text(mensaje) },
+            confirmButton = { TextButton(onClick = vm::descartarErrorEliminar) { Text("Entendido") } }
+        )
     }
 }
 

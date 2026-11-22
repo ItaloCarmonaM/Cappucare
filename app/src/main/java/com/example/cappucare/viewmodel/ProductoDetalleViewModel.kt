@@ -44,6 +44,30 @@ class ProductoDetalleViewModel(
         }
     }
 
+    // Elimina el producto; llama a onEliminado cuando termina bien
+    fun eliminar(onEliminado: () -> Unit) {
+        if (_estado.value.eliminando) return
+
+        viewModelScope.launch {
+            _estado.update { it.copy(eliminando = true, errorEliminar = null) }
+
+            repository.eliminar(productoId)
+                .onSuccess {
+                    _estado.update { it.copy(eliminando = false) }
+                    onEliminado()
+                }
+                .onFailure { error ->
+                    // Por ejemplo 409: el producto tiene movimientos y no se puede eliminar
+                    _estado.update { it.copy(eliminando = false, errorEliminar = MensajesApi.de(error)) }
+                }
+        }
+    }
+
+    // Cierra el aviso de error de la eliminación
+    fun descartarErrorEliminar() {
+        _estado.update { it.copy(errorEliminar = null) }
+    }
+
     companion object {
         // El id del producto llega por la ruta de navegación
         val Factory = viewModelFactory {

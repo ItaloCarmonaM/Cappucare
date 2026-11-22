@@ -25,4 +25,8 @@ class ProductoRepository(private val api: InventarioApiService) {
 
     suspend fun actualizar(producto: Producto): Result<Producto> =
         llamarApi { api.actualizarProducto(producto.id, producto) }
+
+    // Error 409 si el producto tiene movimientos registrados
+    suspend fun eliminar(id: Int): Result<Unit> =
+        llamarApi { api.eliminarProducto(id) }
 }
