@@ -5,8 +5,9 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.cappucare.model.LoginUiState
 import com.example.cappucare.CappucareApp
+import com.example.cappucare.data.remote.ApiException
+import com.example.cappucare.model.LoginUiState
 import com.example.cappucare.repository.UsuarioRepository
 import com.example.cappucare.viewmodel.validacion.Validadores
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
 
 
 class LoginViewModel(private val repositorio: UsuarioRepository) : ViewModel() {
@@ -52,15 +52,21 @@ class LoginViewModel(private val repositorio: UsuarioRepository) : ViewModel() {
 
         viewModelScope.launch {
             _estado.update { it.copy(cargando = true, errorGeneral = null) }
-            val usuario = repositorio.autenticar(actual.correo, actual.clave)
-            if (usuario == null) {
-                _estado.update {
-                    it.copy(cargando = false, errorGeneral = "Correo o contraseña incorrectos")
+
+            repositorio.autenticar(actual.correo, actual.clave)
+                .onSuccess { usuario ->
+                    Sesion.iniciar(usuario)
+                    _estado.update { it.copy(cargando = false, ingresoExitoso = true) }
                 }
-            } else {
-                Sesion.iniciar(usuario)
-                _estado.update { it.copy(cargando = false, ingresoExitoso = true) }
-            }
+                .onFailure { error ->
+                    // 401 = credenciales incorrectas; cualquier otro error muestra su propio mensaje
+                    val mensaje = if (error is ApiException && error.codigo == 401) {
+                        "Correo o contraseña incorrectos"
+                    } else {
+                        MensajesApi.de(error)
+                    }
+                    _estado.update { it.copy(cargando = false, errorGeneral = mensaje) }
+                }
         }
     }
 

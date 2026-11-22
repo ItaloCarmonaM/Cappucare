@@ -8,8 +8,10 @@ data class MovimientoFormUiState(
     val cantidad: String = "",
     val motivo: MotivoSalida? = null,
     val soloVenta: Boolean = false,
+    val cargando: Boolean = false,       // Cargando la lista de productos
+    val errorCarga: String? = null,      // No se pudo cargar la lista de productos
     val guardando: Boolean = false,
-    val errorGeneral: String? = null,
+    val errorGeneral: String? = null,    // Error al registrar el movimiento
     val errores: MovimientoFormErrores = MovimientoFormErrores()
 )
 

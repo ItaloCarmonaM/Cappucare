@@ -1,3 +1,4 @@
+
 package com.example.cappucare.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
@@ -71,22 +72,5 @@ fun TarjetaWikipedia(
                 }
             }
         }
-    }
-}
-
-// Mensaje de error con botón para reintentar (lo usan las pantallas de productos)
-@Composable
-fun ErrorConReintento(
-    mensaje: String,
-    onReintentar: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(mensaje, color = MaterialTheme.colorScheme.error)
-        TextButton(onClick = onReintentar) { Text("Reintentar") }
     }
 }

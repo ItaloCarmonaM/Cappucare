@@ -61,7 +61,9 @@ import com.example.cappucare.notification.Notificaciones
 import com.example.cappucare.notification.Vibracion
 import com.example.cappucare.ui.components.CampoSelector
 import com.example.cappucare.ui.components.CampoTexto
+import com.example.cappucare.ui.components.CargandoCentrado
 import com.example.cappucare.ui.components.ErrorAnimado
+import com.example.cappucare.ui.components.ErrorConReintento
 import com.example.cappucare.ui.utils.anchoMaximoContenido
 import com.example.cappucare.ui.utils.etiqueta
 import com.example.cappucare.ui.utils.rememberTamanoVentana
@@ -77,9 +79,10 @@ private fun Producto.textoSelector() = "$nombre ($codigo)"
 @Composable
 fun MovimientoFormScreen(
     mainViewModel: MainViewModel,
-    vm: MovimientoFormViewModel = viewModel()
+    vm: MovimientoFormViewModel = viewModel(factory = MovimientoFormViewModel.Factory)
 ) {
     val estado by vm.estado.collectAsState()
+    val errorCarga = estado.errorCarga
     val contexto = LocalContext.current
     val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
     var confirmado by remember { mutableStateOf(false) }
@@ -116,151 +119,160 @@ fun MovimientoFormScreen(
             modifier = Modifier.padding(padding).fillMaxSize().imePadding(),
             contentAlignment = Alignment.TopCenter
         ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = anchoMaximo)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                CampoSelector(
-                    valor = estado.producto?.textoSelector() ?: "",
-                    opciones = estado.productos.map { it.textoSelector() },
-                    onSeleccion = { texto ->
-                        estado.productos.firstOrNull { it.textoSelector() == texto }
-                            ?.let(vm::onProductoChange)
-                    },
-                    etiqueta = "Producto",
-                    icono = Icons.Default.Inventory2,
-                    error = estado.errores.producto,
-                    habilitado = !estado.guardando && !confirmado
-                )
+            when {
+                estado.cargando && estado.productos.isEmpty() -> CargandoCentrado()
 
-                estado.producto?.let {
-                    Text(
-                        text = "Stock actual: ${it.cantidad} ${it.unidadMedida}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                errorCarga != null && estado.productos.isEmpty() ->
+                    ErrorConReintento(errorCarga, vm::cargarProductos)
 
-                // Tipo de movimiento: Ingreso o Salida
-                Row(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TipoMovimiento.entries.forEach { tipo ->
-                        FilterChip(
-                            selected = estado.tipo == tipo,
-                            onClick = { vm.onTipoChange(tipo) },
-                            label = { Text(tipo.etiqueta()) },
-                            enabled = !estado.soloVenta && !estado.guardando && !confirmado
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = anchoMaximo)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        CampoSelector(
+                            valor = estado.producto?.textoSelector() ?: "",
+                            opciones = estado.productos.map { it.textoSelector() },
+                            onSeleccion = { texto ->
+                                estado.productos.firstOrNull { it.textoSelector() == texto }
+                                    ?.let(vm::onProductoChange)
+                            },
+                            etiqueta = "Producto",
+                            icono = Icons.Default.Inventory2,
+                            error = estado.errores.producto,
+                            habilitado = !estado.guardando && !confirmado
                         )
-                    }
-                }
 
-                CampoTexto(
-                    valor = estado.cantidad,
-                    onValorChange = vm::onCantidadChange,
-                    etiqueta = "Cantidad",
-                    icono = Icons.Default.Numbers,
-                    error = estado.errores.cantidad,
-                    tipoTeclado = KeyboardType.Number,
-                    imeAction = ImeAction.Done,
-                    habilitado = !estado.guardando && !confirmado
-                )
+                        estado.producto?.let {
+                            Text(
+                                text = "Stock actual: ${it.cantidad} ${it.unidadMedida}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
 
-                // El motivo solo aplica a las salidas (RN5)
-                AnimatedVisibility(
-                    visible = estado.tipo == TipoMovimiento.SALIDA,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    CampoSelector(
-                        valor = estado.motivo?.etiqueta() ?: "",
-                        opciones = MotivoSalida.entries.map { it.etiqueta() },
-                        onSeleccion = { texto ->
-                            MotivoSalida.entries.firstOrNull { it.etiqueta() == texto }
-                                ?.let(vm::onMotivoChange)
-                        },
-                        etiqueta = "Motivo de la salida",
-                        icono = Icons.Default.QuestionAnswer,
-                        error = estado.errores.motivo,
-                        habilitado = !estado.soloVenta && !estado.guardando && !confirmado
-                    )
-                }
-
-                ErrorAnimado(estado.errorGeneral)
-
-                Button(
-                    onClick = {
-                        val usuario = Sesion.usuario
-                        if (usuario != null) {
-                            vm.registrar(usuario.id) { resultado ->
-                                // RN8: solo avisa cuando recién llega al nivel mínimo
-                                if (resultado.alcanzoNivelMinimo) {
-                                    val notificada = Notificaciones.notificarStockBajo(contexto, resultado.producto)
-                                    Vibracion.vibrar(contexto)
-                                    val nombre = resultado.producto.nombre
-                                    alerta = if (notificada) {
-                                        "$nombre llegó a su nivel mínimo"
-                                    } else {
-                                        // Sin permiso la notificación no se muestra: se avisa dentro de la app
-                                        "$nombre llegó a su nivel mínimo. Activa las notificaciones en Ajustes para recibir avisos"
-                                    }
-                                }
-                                confirmado = true
+                        // Tipo de movimiento: Ingreso o Salida
+                        Row(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TipoMovimiento.entries.forEach { tipo ->
+                                FilterChip(
+                                    selected = estado.tipo == tipo,
+                                    onClick = { vm.onTipoChange(tipo) },
+                                    label = { Text(tipo.etiqueta()) },
+                                    enabled = !estado.soloVenta && !estado.guardando && !confirmado
+                                )
                             }
                         }
-                    },
-                    enabled = !estado.guardando && !confirmado,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                ) {
-                    if (estado.guardando) {
-                        // Loader mientras se guarda
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Text("  Guardar movimiento")
-                    }
-                }
 
-                // Confirmación animada al guardar
-                AnimatedVisibility(
-                    visible = confirmado,
-                    enter = fadeIn() + scaleIn() + expandVertically()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                        CampoTexto(
+                            valor = estado.cantidad,
+                            onValorChange = vm::onCantidadChange,
+                            etiqueta = "Cantidad",
+                            icono = Icons.Default.Numbers,
+                            error = estado.errores.cantidad,
+                            tipoTeclado = KeyboardType.Number,
+                            imeAction = ImeAction.Done,
+                            habilitado = !estado.guardando && !confirmado
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Movimiento registrado", style = MaterialTheme.typography.titleMedium)
-                    }
-                }
 
-                // Aviso de stock bajo dentro de la interfaz (acompaña a la notificación y la vibración)
-                AnimatedVisibility(
-                    visible = alerta != null,
-                    enter = fadeIn() + expandVertically()
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warning, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(alerta ?: "")
+                        // El motivo solo aplica a las salidas (RN5)
+                        AnimatedVisibility(
+                            visible = estado.tipo == TipoMovimiento.SALIDA,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            CampoSelector(
+                                valor = estado.motivo?.etiqueta() ?: "",
+                                opciones = MotivoSalida.entries.map { it.etiqueta() },
+                                onSeleccion = { texto ->
+                                    MotivoSalida.entries.firstOrNull { it.etiqueta() == texto }
+                                        ?.let(vm::onMotivoChange)
+                                },
+                                etiqueta = "Motivo de la salida",
+                                icono = Icons.Default.QuestionAnswer,
+                                error = estado.errores.motivo,
+                                habilitado = !estado.soloVenta && !estado.guardando && !confirmado
+                            )
+                        }
+
+                        ErrorAnimado(estado.errorGeneral)
+
+                        Button(
+                            onClick = {
+                                val usuario = Sesion.usuario
+                                if (usuario != null) {
+                                    vm.registrar(usuario) { resultado ->
+                                        // RN8: solo avisa cuando recién llega al nivel mínimo
+                                        if (resultado.alcanzoNivelMinimo) {
+                                            val notificada = Notificaciones.notificarStockBajo(contexto, resultado.producto)
+                                            Vibracion.vibrar(contexto)
+                                            val nombre = resultado.producto.nombre
+                                            alerta = if (notificada) {
+                                                "$nombre llegó a su nivel mínimo"
+                                            } else {
+                                                // Sin permiso la notificación no se muestra: se avisa dentro de la app
+                                                "$nombre llegó a su nivel mínimo. Activa las notificaciones en Ajustes para recibir avisos"
+                                            }
+                                        }
+                                        confirmado = true
+                                    }
+                                }
+                            },
+                            enabled = !estado.guardando && !confirmado,
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        ) {
+                            if (estado.guardando) {
+                                // Loader mientras se guarda
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Text("  Guardar movimiento")
+                            }
+                        }
+
+                        // Confirmación animada al guardar
+                        AnimatedVisibility(
+                            visible = confirmado,
+                            enter = fadeIn() + scaleIn() + expandVertically()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Movimiento registrado", style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+
+                        // Aviso de stock bajo dentro de la interfaz (acompaña a la notificación y la vibración)
+                        AnimatedVisibility(
+                            visible = alerta != null,
+                            enter = fadeIn() + expandVertically()
+                        ) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Warning, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(alerta ?: "")
+                                }
+                            }
                         }
                     }
                 }

@@ -1,18 +1,55 @@
 package com.example.cappucare.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.cappucare.CappucareApp
-import com.example.cappucare.model.Producto
-import kotlinx.coroutines.flow.SharingStarted
+import com.example.cappucare.model.AlertasUiState
+import com.example.cappucare.repository.ProductoRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-// Productos en stock bajo o agotados
-class AlertasViewModel(application: Application) : AndroidViewModel(application) {
+// Productos en stock bajo o agotados.
+// No consulta al crearse: la pantalla llama a cargar() cada vez que aparece
+class AlertasViewModel(
+    private val repository: ProductoRepository
+) : ViewModel() {
 
-    val productos: StateFlow<List<Producto>> = getApplication<CappucareApp>().productoRepository
-        .obtenerStockBajo()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _estado = MutableStateFlow(AlertasUiState())
+    val estado: StateFlow<AlertasUiState> = _estado.asStateFlow()
+
+    private var cargaJob: Job? = null
+
+    // Consulta los productos en alerta (también sirve para reintentar tras un error)
+    fun cargar() {
+        cargaJob?.cancel()
+        cargaJob = viewModelScope.launch {
+            _estado.update { it.copy(cargando = true, error = null) }
+
+            repository.obtenerStockBajo()
+                .onSuccess { productos ->
+                    _estado.update { it.copy(productos = productos, cargando = false) }
+                }
+                .onFailure { error ->
+                    // Se conservan los productos que ya se estaban mostrando
+                    _estado.update { it.copy(cargando = false, error = MensajesApi.de(error)) }
+                }
+        }
+    }
+
+    companion object {
+        // Crea el ViewModel con el repositorio que guarda CappucareApp
+        val Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as CappucareApp
+                AlertasViewModel(app.productoRepository)
+            }
+        }
+    }
 }

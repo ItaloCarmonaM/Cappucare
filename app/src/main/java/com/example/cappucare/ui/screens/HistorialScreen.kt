@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cappucare.model.MovimientoDetalle
 import com.example.cappucare.model.TipoMovimiento
+import com.example.cappucare.ui.components.CargandoCentrado
+import com.example.cappucare.ui.components.ErrorConReintento
 import com.example.cappucare.ui.theme.ColorAgotado
 import com.example.cappucare.ui.theme.ColorDisponible
 import com.example.cappucare.ui.utils.anchoMaximoContenido
@@ -44,31 +47,45 @@ import java.util.Locale
 @Composable
 fun HistorialScreen(
     mainViewModel: MainViewModel,
-    vm: HistorialViewModel = viewModel()
+    vm: HistorialViewModel = viewModel(factory = HistorialViewModel.Factory)
 ) {
-    val movimientos by vm.movimientos.collectAsState()
+    val estado by vm.estado.collectAsState()
+    val movimientos = estado.movimientos
+    val error = estado.error
     val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
+
+    // Cada vez que la pantalla aparece se consulta de nuevo (puede haber movimientos nuevos)
+    LaunchedEffect(Unit) { vm.cargar() }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Historial de movimientos") }) }
     ) { padding ->
-        if (movimientos.isEmpty()) {
-            Box(
-                Modifier.padding(padding).fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Aún no hay movimientos registrados")
+        val modificador = Modifier.padding(padding)
+        when {
+            estado.cargando && movimientos.isEmpty() -> CargandoCentrado(modificador)
+
+            error != null && movimientos.isEmpty() -> ErrorConReintento(error, vm::cargar, modificador)
+
+            movimientos.isEmpty() -> {
+                Box(
+                    modificador.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Aún no hay movimientos registrados")
+                }
             }
-        } else {
-            Box(
-                Modifier.padding(padding).fillMaxSize(),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                LazyColumn(modifier = Modifier.widthIn(max = anchoMaximo).fillMaxWidth()) {
-                    items(movimientos, key = { it.movimiento.id }) { detalle ->
-                        FilaMovimiento(detalle)
-                        HorizontalDivider()
+
+            else -> {
+                Box(
+                    modificador.fillMaxSize(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    LazyColumn(modifier = Modifier.widthIn(max = anchoMaximo).fillMaxWidth()) {
+                        items(movimientos, key = { it.movimiento.id }) { detalle ->
+                            FilaMovimiento(detalle)
+                            HorizontalDivider()
+                        }
                     }
                 }
             }

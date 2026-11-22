@@ -1,34 +1,36 @@
 package com.example.cappucare.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.cappucare.CappucareApp
+import com.example.cappucare.data.remote.ApiException
 import com.example.cappucare.model.Producto
 import com.example.cappucare.model.ProductoFormErrores
 import com.example.cappucare.model.ProductoFormUiState
 import com.example.cappucare.navigation.Screen
+import com.example.cappucare.repository.ProductoRepository
 import com.example.cappucare.viewmodel.validacion.Validadores
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// Formulario para crear (productoId = 0) o editar un producto
 class ProductoFormViewModel(
-    application: Application,
-    savedStateHandle: SavedStateHandle
-) : AndroidViewModel(application) {
+    private val repository: ProductoRepository,
+    private val productoId: Int
+) : ViewModel() {
 
-    private val repository = getApplication<CappucareApp>().productoRepository
-
-    // Id recibido por la ruta (0 significa producto nuevo)
-    private val productoId: Int = savedStateHandle.get<Int>(Screen.ARG_PRODUCTO_ID) ?: 0
-
-    // Estado interno mutable
-    private val _estado = MutableStateFlow(ProductoFormUiState(esEdicion = productoId != 0))
-    // Estado expuesto para la UI
-    val estado: StateFlow<ProductoFormUiState> = _estado
+    // En edición el formulario parte "cargando" hasta traer el producto del servidor
+    private val _estado = MutableStateFlow(
+        ProductoFormUiState(esEdicion = productoId != 0, cargando = productoId != 0)
+    )
+    val estado: StateFlow<ProductoFormUiState> = _estado.asStateFlow()
 
     // Producto original (solo en edición). El stock solo cambia mediante movimientos
     private var productoOriginal: Producto? = null
@@ -37,24 +39,31 @@ class ProductoFormViewModel(
         if (productoId != 0) cargarProducto()
     }
 
-    // Carga los datos del producto a editar en el formulario
-    private fun cargarProducto() {
+    // Carga los datos del producto a editar en el formulario (también sirve para reintentar)
+    fun cargarProducto() {
         viewModelScope.launch {
-            repository.obtenerPorId(productoId)?.let { p ->
-                productoOriginal = p
-                _estado.update {
-                    it.copy(
-                        codigo = p.codigo,
-                        nombre = p.nombre,
-                        descripcion = p.descripcion,
-                        categoria = p.categoria,
-                        cantidad = p.cantidad.toString(),
-                        unidadMedida = p.unidadMedida,
-                        nivelMinimo = p.nivelMinimo.toString(),
-                        ubicacion = p.ubicacion
-                    )
+            _estado.update { it.copy(cargando = true, errorCarga = null) }
+
+            repository.obtenerPorId(productoId)
+                .onSuccess { p ->
+                    productoOriginal = p
+                    _estado.update {
+                        it.copy(
+                            codigo = p.codigo,
+                            nombre = p.nombre,
+                            descripcion = p.descripcion,
+                            categoria = p.categoria,
+                            cantidad = p.cantidad.toString(),
+                            unidadMedida = p.unidadMedida,
+                            nivelMinimo = p.nivelMinimo.toString(),
+                            ubicacion = p.ubicacion,
+                            cargando = false
+                        )
+                    }
                 }
-            }
+                .onFailure { error ->
+                    _estado.update { it.copy(cargando = false, errorCarga = MensajesApi.de(error)) }
+                }
         }
     }
 
@@ -111,24 +120,17 @@ class ProductoFormViewModel(
 
     // Valida y guarda el producto; llama a onGuardado cuando termina bien
     fun guardar(onGuardado: () -> Unit) {
+        if (_estado.value.guardando) return
         // En edición, espera a que el producto termine de cargar
         if (_estado.value.esEdicion && productoOriginal == null) return
         if (!validarFormulario()) return
 
         viewModelScope.launch {
-            _estado.update { it.copy(guardando = true) }
+            _estado.update { it.copy(guardando = true, errorGeneral = null) }
             val e = _estado.value
-
-            // RN1: el código no puede estar repetido
-            if (repository.existeCodigo(e.codigo, productoId)) {
-                _estado.update {
-                    it.copy(guardando = false, errores = it.errores.copy(codigo = "Este código ya está en uso"))
-                }
-                return@launch
-            }
-
             val original = productoOriginal
-            if (original == null) {
+
+            val resultado = if (original == null) {
                 repository.crear(
                     Producto(
                         codigo = e.codigo.trim(),
@@ -156,8 +158,35 @@ class ProductoFormViewModel(
                 )
             }
 
-            _estado.update { it.copy(guardando = false) }
-            onGuardado()
+            resultado
+                .onSuccess {
+                    _estado.update { it.copy(guardando = false) }
+                    onGuardado()
+                }
+                .onFailure { error ->
+                    if (error is ApiException && error.codigo == 409) {
+                        // RN1: el servidor avisa que el código ya existe
+                        _estado.update {
+                            it.copy(
+                                guardando = false,
+                                errores = it.errores.copy(codigo = "Este código ya está en uso")
+                            )
+                        }
+                    } else {
+                        _estado.update { it.copy(guardando = false, errorGeneral = MensajesApi.de(error)) }
+                    }
+                }
+        }
+    }
+
+    companion object {
+        // El id del producto llega por la ruta de navegación (0 = producto nuevo)
+        val Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as CappucareApp
+                val productoId = createSavedStateHandle().get<Int>(Screen.ARG_PRODUCTO_ID) ?: 0
+                ProductoFormViewModel(app.productoRepository, productoId)
+            }
         }
     }
 }

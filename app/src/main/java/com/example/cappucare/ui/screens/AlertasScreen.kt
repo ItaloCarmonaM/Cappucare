@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -21,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cappucare.navigation.Screen
+import com.example.cappucare.ui.components.CargandoCentrado
+import com.example.cappucare.ui.components.ErrorConReintento
 import com.example.cappucare.ui.components.TarjetaProducto
 import com.example.cappucare.ui.utils.columnasProductos
 import com.example.cappucare.ui.utils.rememberTamanoVentana
@@ -32,36 +35,50 @@ import com.example.cappucare.viewmodel.MainViewModel
 @Composable
 fun AlertasScreen(
     mainViewModel: MainViewModel,
-    vm: AlertasViewModel = viewModel()
+    vm: AlertasViewModel = viewModel(factory = AlertasViewModel.Factory)
 ) {
-    val productos by vm.productos.collectAsState()
+    val estado by vm.estado.collectAsState()
+    val productos = estado.productos
+    val error = estado.error
     val columnas = rememberTamanoVentana().columnasProductos
+
+    // Cada vez que la pantalla aparece se consulta de nuevo (el stock pudo cambiar)
+    LaunchedEffect(Unit) { vm.cargar() }
 
     Scaffold(
         // El menú inferior ya lo maneja AppNavigation: aquí no se repiten los márgenes
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Alertas de stock") }) }
     ) { padding ->
-        if (productos.isEmpty()) {
-            Box(
-                Modifier.padding(padding).fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay productos con stock bajo")
+        val modificador = Modifier.padding(padding)
+        when {
+            estado.cargando && productos.isEmpty() -> CargandoCentrado(modificador)
+
+            error != null && productos.isEmpty() -> ErrorConReintento(error, vm::cargar, modificador)
+
+            productos.isEmpty() -> {
+                Box(
+                    modificador.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No hay productos con stock bajo")
+                }
             }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columnas),
-                modifier = Modifier.padding(padding),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                items(productos, key = { it.id }) { producto ->
-                    TarjetaProducto(
-                        producto = producto,
-                        onClick = { mainViewModel.navigateTo(Screen.ProductoDetalle(producto.id)) }
-                    )
+
+            else -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columnas),
+                    modifier = modificador,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(16.dp)
+                ) {
+                    items(productos, key = { it.id }) { producto ->
+                        TarjetaProducto(
+                            producto = producto,
+                            onClick = { mainViewModel.navigateTo(Screen.ProductoDetalle(producto.id)) }
+                        )
+                    }
                 }
             }
         }

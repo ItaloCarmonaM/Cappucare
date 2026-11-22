@@ -1,26 +1,57 @@
 package com.example.cappucare.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.cappucare.CappucareApp
-import com.example.cappucare.model.Producto
+import com.example.cappucare.model.ProductoDetalleUiState
 import com.example.cappucare.navigation.Screen
-import kotlinx.coroutines.flow.SharingStarted
+import com.example.cappucare.repository.ProductoRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-// Detalle de un producto
+// Detalle de un producto. La pantalla llama a cargar() cada vez que aparece,
+// así el stock se ve actualizado después de editar o registrar un movimiento
 class ProductoDetalleViewModel(
-    application: Application,
-    savedStateHandle: SavedStateHandle
-) : AndroidViewModel(application) {
+    private val repository: ProductoRepository,
+    private val productoId: Int
+) : ViewModel() {
 
-    private val productoId: Int = savedStateHandle.get<Int>(Screen.ARG_PRODUCTO_ID) ?: 0
+    private val _estado = MutableStateFlow(ProductoDetalleUiState())
+    val estado: StateFlow<ProductoDetalleUiState> = _estado.asStateFlow()
 
-    // Se actualiza cuando cambia el producto en la base de datos
-    val producto: StateFlow<Producto?> = getApplication<CappucareApp>().productoRepository
-        .observarPorId(productoId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    private var cargaJob: Job? = null
+
+    fun cargar() {
+        cargaJob?.cancel()
+        cargaJob = viewModelScope.launch {
+            _estado.update { it.copy(cargando = true, error = null) }
+
+            repository.obtenerPorId(productoId)
+                .onSuccess { producto ->
+                    _estado.update { it.copy(producto = producto, cargando = false) }
+                }
+                .onFailure { error ->
+                    _estado.update { it.copy(cargando = false, error = MensajesApi.de(error)) }
+                }
+        }
+    }
+
+    companion object {
+        // El id del producto llega por la ruta de navegación
+        val Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as CappucareApp
+                val productoId = createSavedStateHandle().get<Int>(Screen.ARG_PRODUCTO_ID) ?: 0
+                ProductoDetalleViewModel(app.productoRepository, productoId)
+            }
+        }
+    }
 }

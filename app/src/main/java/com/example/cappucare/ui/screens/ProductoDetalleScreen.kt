@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cappucare.model.EstadoProducto
 import com.example.cappucare.navigation.Screen
+import com.example.cappucare.ui.components.CargandoCentrado
+import com.example.cappucare.ui.components.ErrorConReintento
 import com.example.cappucare.ui.components.EstadoChip
 import com.example.cappucare.ui.utils.anchoMaximoContenido
 import com.example.cappucare.ui.utils.rememberTamanoVentana
@@ -55,10 +57,15 @@ import com.example.cappucare.viewmodel.Sesion
 @Composable
 fun ProductoDetalleScreen(
     mainViewModel: MainViewModel,
-    vm: ProductoDetalleViewModel = viewModel()
+    vm: ProductoDetalleViewModel = viewModel(factory = ProductoDetalleViewModel.Factory)
 ) {
-    val producto by vm.producto.collectAsState()
+    val estado by vm.estado.collectAsState()
+    val producto = estado.producto
+    val error = estado.error
     val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
+
+    // Cada vez que la pantalla aparece se consulta de nuevo (el producto pudo editarse o cambiar su stock)
+    LaunchedEffect(Unit) { vm.cargar() }
 
     Scaffold(
         topBar = {
@@ -87,7 +94,11 @@ fun ProductoDetalleScreen(
         ) {
             val p = producto
             if (p == null) {
-                CircularProgressIndicator(Modifier.padding(32.dp))
+                if (error != null) {
+                    ErrorConReintento(error, vm::cargar)
+                } else {
+                    CargandoCentrado()
+                }
             } else {
                 Column(
                     modifier = Modifier

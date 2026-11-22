@@ -1,14 +1,9 @@
 package com.example.cappucare
 
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
-import org.junit.Assert.*
-
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
+// Prueba de ejemplo con JUnit 5 (JUnit 4 no se ejecuta con la configuración useJUnitPlatform)
 class ExampleUnitTest {
     @Test
     fun addition_isCorrect() {

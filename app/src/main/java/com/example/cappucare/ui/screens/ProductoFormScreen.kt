@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cappucare.ui.components.CampoSelector
 import com.example.cappucare.ui.components.CampoTexto
+import com.example.cappucare.ui.components.CargandoCentrado
+import com.example.cappucare.ui.components.ErrorAnimado
+import com.example.cappucare.ui.components.ErrorConReintento
 import com.example.cappucare.ui.utils.anchoMaximoContenido
 import com.example.cappucare.ui.utils.rememberTamanoVentana
 import com.example.cappucare.viewmodel.MainViewModel
@@ -53,9 +56,10 @@ private val UNIDADES = listOf("unidad", "caja", "paquete")
 @Composable
 fun ProductoFormScreen(
     mainViewModel: MainViewModel,
-    vm: ProductoFormViewModel = viewModel()
+    vm: ProductoFormViewModel = viewModel(factory = ProductoFormViewModel.Factory)
 ) {
     val estado by vm.estado.collectAsState()
+    val errorCarga = estado.errorCarga
     val anchoMaximo = rememberTamanoVentana().anchoMaximoContenido
 
     Scaffold(
@@ -74,88 +78,98 @@ fun ProductoFormScreen(
             modifier = Modifier.padding(padding).fillMaxSize().imePadding(),
             contentAlignment = Alignment.TopCenter
         ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = anchoMaximo)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                CampoTexto(
-                    valor = estado.codigo,
-                    onValorChange = vm::onCodigoChange,
-                    etiqueta = "Código",
-                    icono = Icons.Default.Tag,
-                    error = estado.errores.codigo
-                )
-                CampoTexto(
-                    valor = estado.nombre,
-                    onValorChange = vm::onNombreChange,
-                    etiqueta = "Nombre",
-                    icono = Icons.Default.Inventory2,
-                    error = estado.errores.nombre
-                )
-                CampoTexto(
-                    valor = estado.descripcion,
-                    onValorChange = vm::onDescripcionChange,
-                    etiqueta = "Descripción (opcional)",
-                    icono = Icons.Default.Description
-                )
-                CampoSelector(
-                    valor = estado.categoria,
-                    opciones = CATEGORIAS,
-                    onSeleccion = vm::onCategoriaChange,
-                    etiqueta = "Categoría",
-                    icono = Icons.Default.Category,
-                    error = estado.errores.categoria
-                )
-                CampoTexto(
-                    valor = estado.cantidad,
-                    onValorChange = vm::onCantidadChange,
-                    etiqueta = if (estado.esEdicion) "Cantidad (cambia con movimientos)" else "Cantidad inicial",
-                    icono = Icons.Default.Numbers,
-                    error = estado.errores.cantidad,
-                    tipoTeclado = KeyboardType.Number,
-                    // Al editar, el stock solo cambia registrando ingresos y salidas (RN6)
-                    habilitado = !estado.esEdicion
-                )
-                CampoSelector(
-                    valor = estado.unidadMedida,
-                    opciones = UNIDADES,
-                    onSeleccion = vm::onUnidadMedidaChange,
-                    etiqueta = "Unidad de medida",
-                    icono = Icons.Default.Straighten,
-                    error = estado.errores.unidadMedida
-                )
-                CampoTexto(
-                    valor = estado.nivelMinimo,
-                    onValorChange = vm::onNivelMinimoChange,
-                    etiqueta = "Nivel mínimo de existencias",
-                    icono = Icons.Default.Warning,
-                    error = estado.errores.nivelMinimo,
-                    tipoTeclado = KeyboardType.Number
-                )
-                CampoTexto(
-                    valor = estado.ubicacion,
-                    onValorChange = vm::onUbicacionChange,
-                    etiqueta = "Ubicación de almacenamiento",
-                    icono = Icons.Default.Place,
-                    error = estado.errores.ubicacion,
-                    imeAction = ImeAction.Done
-                )
+            when {
+                estado.cargando -> CargandoCentrado()
 
-                Button(
-                    // Al guardar correctamente se vuelve a la pantalla anterior
-                    onClick = { vm.guardar { mainViewModel.navigateBack() } },
-                    enabled = !estado.guardando,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                ) {
-                    if (estado.guardando) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Text("  Guardar producto")
+                errorCarga != null -> ErrorConReintento(errorCarga, vm::cargarProducto)
+
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = anchoMaximo)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        CampoTexto(
+                            valor = estado.codigo,
+                            onValorChange = vm::onCodigoChange,
+                            etiqueta = "Código",
+                            icono = Icons.Default.Tag,
+                            error = estado.errores.codigo
+                        )
+                        CampoTexto(
+                            valor = estado.nombre,
+                            onValorChange = vm::onNombreChange,
+                            etiqueta = "Nombre",
+                            icono = Icons.Default.Inventory2,
+                            error = estado.errores.nombre
+                        )
+                        CampoTexto(
+                            valor = estado.descripcion,
+                            onValorChange = vm::onDescripcionChange,
+                            etiqueta = "Descripción (opcional)",
+                            icono = Icons.Default.Description
+                        )
+                        CampoSelector(
+                            valor = estado.categoria,
+                            opciones = CATEGORIAS,
+                            onSeleccion = vm::onCategoriaChange,
+                            etiqueta = "Categoría",
+                            icono = Icons.Default.Category,
+                            error = estado.errores.categoria
+                        )
+                        CampoTexto(
+                            valor = estado.cantidad,
+                            onValorChange = vm::onCantidadChange,
+                            etiqueta = if (estado.esEdicion) "Cantidad (cambia con movimientos)" else "Cantidad inicial",
+                            icono = Icons.Default.Numbers,
+                            error = estado.errores.cantidad,
+                            tipoTeclado = KeyboardType.Number,
+                            // Al editar, el stock solo cambia registrando ingresos y salidas (RN6)
+                            habilitado = !estado.esEdicion
+                        )
+                        CampoSelector(
+                            valor = estado.unidadMedida,
+                            opciones = UNIDADES,
+                            onSeleccion = vm::onUnidadMedidaChange,
+                            etiqueta = "Unidad de medida",
+                            icono = Icons.Default.Straighten,
+                            error = estado.errores.unidadMedida
+                        )
+                        CampoTexto(
+                            valor = estado.nivelMinimo,
+                            onValorChange = vm::onNivelMinimoChange,
+                            etiqueta = "Nivel mínimo de existencias",
+                            icono = Icons.Default.Warning,
+                            error = estado.errores.nivelMinimo,
+                            tipoTeclado = KeyboardType.Number
+                        )
+                        CampoTexto(
+                            valor = estado.ubicacion,
+                            onValorChange = vm::onUbicacionChange,
+                            etiqueta = "Ubicación de almacenamiento",
+                            icono = Icons.Default.Place,
+                            error = estado.errores.ubicacion,
+                            imeAction = ImeAction.Done
+                        )
+
+                        ErrorAnimado(estado.errorGeneral)
+
+                        Button(
+                            // Al guardar correctamente se vuelve a la pantalla anterior
+                            onClick = { vm.guardar { mainViewModel.navigateBack() } },
+                            enabled = !estado.guardando,
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        ) {
+                            if (estado.guardando) {
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Text("  Guardar producto")
+                            }
+                        }
                     }
                 }
             }
